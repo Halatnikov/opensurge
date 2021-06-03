@@ -1,7 +1,7 @@
 #
 # Open Surge Engine
 # CMakeLists.txt - CMake script
-# Copyright (C) 2008-2020  Alexandre Martins <alemartf@gmail.com>
+# Copyright (C) 2008-2021  Alexandre Martins <alemartf@gmail.com>
 # http://opensurge2d.org
 #
 # This program is free software; you can redistribute it and/or modify
@@ -29,19 +29,19 @@ SET(GAME_UNIXNAME "${CMAKE_PROJECT_NAME}")
 SET(GAME_NAME "Open Surge")
 FUNCTION(READ_VERSION VERSION_STRING)
   SET(VERSION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/src/core/global.h")
-  SET(VERSION_MAIN_REGEX "#define[ \t]+GAME_MAIN_VERSION[ \t]+(.+)")
-  SET(VERSION_MAJOR_REGEX "#define[ \t]+GAME_MAJOR_VERSION[ \t]+(.+)")
-  SET(VERSION_MINOR_REGEX "#define[ \t]+GAME_MINOR_VERSION[ \t]+(.+)")
-  SET(VERSION_PATCH_REGEX "#define[ \t]+GAME_PATCH_VERSION[ \t]+(.+)")
-  FILE(STRINGS "${VERSION_FILE}" GAME_MAIN_VERSION REGEX "${VERSION_MAIN_REGEX}")
-  FILE(STRINGS "${VERSION_FILE}" GAME_MAJOR_VERSION REGEX "${VERSION_MAJOR_REGEX}")
-  FILE(STRINGS "${VERSION_FILE}" GAME_MINOR_VERSION REGEX "${VERSION_MINOR_REGEX}")
-  FILE(STRINGS "${VERSION_FILE}" GAME_PATCH_VERSION REGEX "${VERSION_PATCH_REGEX}")
-  STRING(REGEX REPLACE ${VERSION_MAIN_REGEX} "\\1" GAME_MAIN_VERSION "${GAME_MAIN_VERSION}")
-  STRING(REGEX REPLACE ${VERSION_MAJOR_REGEX} "\\1" GAME_MAJOR_VERSION "${GAME_MAJOR_VERSION}")
-  STRING(REGEX REPLACE ${VERSION_MINOR_REGEX} "\\1" GAME_MINOR_VERSION "${GAME_MINOR_VERSION}")
-  STRING(REGEX REPLACE ${VERSION_PATCH_REGEX} "\\1" GAME_PATCH_VERSION "${GAME_PATCH_VERSION}")
-  SET(${VERSION_STRING} "${GAME_MAIN_VERSION}.${GAME_MAJOR_VERSION}.${GAME_MINOR_VERSION}.${GAME_PATCH_VERSION}" PARENT_SCOPE)
+  SET(VERSION_MAIN_REGEX "#define[ \t]+GAME_VERSION_SUP[ \t]+(.+)")
+  SET(VERSION_MAJOR_REGEX "#define[ \t]+GAME_VERSION_SUB[ \t]+(.+)")
+  SET(VERSION_MINOR_REGEX "#define[ \t]+GAME_VERSION_WIP[ \t]+(.+)")
+  SET(VERSION_PATCH_REGEX "#define[ \t]+GAME_VERSION_FIX[ \t]+(.+)")
+  FILE(STRINGS "${VERSION_FILE}" GAME_VERSION_SUP REGEX "${VERSION_MAIN_REGEX}")
+  FILE(STRINGS "${VERSION_FILE}" GAME_VERSION_SUB REGEX "${VERSION_MAJOR_REGEX}")
+  FILE(STRINGS "${VERSION_FILE}" GAME_VERSION_WIP REGEX "${VERSION_MINOR_REGEX}")
+  FILE(STRINGS "${VERSION_FILE}" GAME_VERSION_FIX REGEX "${VERSION_PATCH_REGEX}")
+  STRING(REGEX REPLACE ${VERSION_MAIN_REGEX} "\\1" GAME_VERSION_SUP "${GAME_VERSION_SUP}")
+  STRING(REGEX REPLACE ${VERSION_MAJOR_REGEX} "\\1" GAME_VERSION_SUB "${GAME_VERSION_SUB}")
+  STRING(REGEX REPLACE ${VERSION_MINOR_REGEX} "\\1" GAME_VERSION_WIP "${GAME_VERSION_WIP}")
+  STRING(REGEX REPLACE ${VERSION_PATCH_REGEX} "\\1" GAME_VERSION_FIX "${GAME_VERSION_FIX}")
+  SET(${VERSION_STRING} "${GAME_VERSION_SUP}.${GAME_VERSION_SUB}.${GAME_VERSION_WIP}.${GAME_VERSION_FIX}" PARENT_SCOPE)
 ENDFUNCTION()
 READ_VERSION(GAME_VERSION)
 MESSAGE("${GAME_NAME} version ${GAME_VERSION}")
@@ -62,32 +62,42 @@ OPTION(LEGACY_USE_OPENAL "Use OpenAL for audio playback (deprecated; Allegro 4 o
 OPTION(SURGESCRIPT_STATIC "Link SurgeScript statically" OFF)
 OPTION(ALLEGRO_STATIC "Use the static version of Allegro 5 (Windows only)" OFF)
 OPTION(ALLEGRO_MONOLITH "Use the monolith version of Allegro 5" OFF)
+IF(UNIX)
+  OPTION(DESKTOP_INSTALL "Add Open Surge to the Desktop menu when installing" ON)
+ENDIF()
+
+# User-specified paths
 SET(ALLEGRO_LIBRARY_PATH "${CMAKE_LIBRARY_PATH}" CACHE PATH "Where to look for Allegro & its dependencies")
 SET(ALLEGRO_INCLUDE_PATH "${CMAKE_INCLUDE_PATH}" CACHE PATH "Custom include directory for Allegro (where to look for the header files)")
 SET(SURGESCRIPT_LIBRARY_PATH "${CMAKE_LIBRARY_PATH}" CACHE PATH "Where to look for SurgeScript")
 SET(SURGESCRIPT_INCLUDE_PATH "${CMAKE_INCLUDE_PATH}" CACHE PATH "Custom include directory for SurgeScript (where to look for the header files)")
+IF(UNIX AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  SET(CMAKE_INSTALL_PREFIX "/usr" CACHE PATH "Install path prefix (prepended onto install directories)" FORCE)
+ENDIF()
 IF(UNIX)
-  SET(GAME_BINDIR "${CMAKE_INSTALL_PREFIX}/games" CACHE PATH "Directory where the game executable will be installed")
-  SET(GAME_DATADIR "${CMAKE_INSTALL_PREFIX}/share/games/${GAME_UNIXNAME}" CACHE PATH "Directory where the game data will be installed")
-  OPTION(DESKTOP_INSTALL "Add Open Surge to the Desktop menu (freedesktop.org) when installing" ON)
-  SET(DESKTOP_ENTRY_PATH "/usr/share/applications" CACHE PATH "Where to store the .desktop file when installing")
+  SET(GAME_BINDIR "games" CACHE PATH "Directory in which the game executable will be stored when installing")
+  SET(GAME_DATADIR "share/games/${GAME_UNIXNAME}" CACHE PATH "Directory in which the game data will be stored when installing")
   SET(DESKTOP_ICON_PATH "/usr/share/pixmaps" CACHE PATH "Where to store the icon file when installing")
-  SET(DESKTOP_METAINFO_PATH "/usr/share/metainfo" CACHE PATH "Where to store the metainfo file when installing")
+  SET(DESKTOP_ENTRY_PATH "/usr/share/applications" CACHE PATH "Where to store the .desktop file when installing")
+  SET(DESKTOP_METAINFO_PATH "/usr/share/metainfo" CACHE PATH "Where to store the metainfo file. You shouldn't change this (check the AppStream spec).")
 ENDIF()
 
 # Compiling the development version?
 OPTION(BLEEDING_EDGE "Enable if using the development version" OFF)
 SET(BLEEDING_EDGE_VERSION "custom" CACHE STRING "Build version (bleeding edge)")
 IF(BLEEDING_EDGE)
-  SET(DEFS "${DEFS}" "GAME_BUILD_VERSION='${BLEEDING_EDGE_VERSION}-dev'")
+  SET(DEFS "${DEFS}" "GAME_BUILD_VERSION=\"${BLEEDING_EDGE_VERSION}-dev\"")
 ENDIF()
 
 # data folder (game assets)
 IF(UNIX)
-  IF(NOT IS_ABSOLUTE "${GAME_DATADIR}")
-    MESSAGE(FATAL_ERROR "GAME_DATADIR must be an absolute path (current value: ${GAME_DATADIR})")
+  IF(IS_ABSOLUTE "${GAME_DATADIR}")
+    SET(DEFS "${DEFS}" "GAME_DATADIR=\"${GAME_DATADIR}\"")
+  ELSEIF(IS_ABSOLUTE "${CMAKE_INSTALL_PREFIX}/${GAME_DATADIR}")
+    SET(DEFS "${DEFS}" "GAME_DATADIR=\"${CMAKE_INSTALL_PREFIX}/${GAME_DATADIR}\"")
+  ELSE()
+    MESSAGE(FATAL_ERROR "GAME_DATADIR is not an absolute path: ${CMAKE_INSTALL_PREFIX}/${GAME_DATADIR}")
   ENDIF()
-  SET(DEFS "${DEFS}" "GAME_DATADIR=\"${GAME_DATADIR}\"")
 ENDIF()
 
 # Use the Allegro 5 backend
@@ -109,7 +119,7 @@ ENDIF()
 
 # Generate files from templates
 FUNCTION(generate_file TEMPLATE)
-  CONFIGURE_FILE("src/misc/${TEMPLATE}.in" "misc/${TEMPLATE}" @ONLY)
+  CONFIGURE_FILE("src/misc/${TEMPLATE}.in" "src/misc/${TEMPLATE}" @ONLY)
 ENDFUNCTION()
 
 # Generate the content of the credits screen
@@ -119,6 +129,14 @@ FOREACH(line IN LISTS COPYRIGHT_DATA_CSV_LIST)
   SET(COPYRIGHT_DATA_CSV "${COPYRIGHT_DATA_CSV}\n\"${line}\\n\"")
 ENDFOREACH()
 generate_file("credits.c")
+
+# Generate desktop & metadata files
+# They require the absolute path of the icon
+IF(DEFINED DESKTOP_ICON_PATH)
+  SET(DESKTOP_ICON_FULLPATH "${DESKTOP_ICON_PATH}/opensurge.png")
+  generate_file("opensurge.desktop")
+  generate_file("opensurge.appdata.xml")
+ENDIF()
 
 # ------------------------------------------
 # Finding the required libraries
@@ -460,7 +478,7 @@ SET(GAME_SRCS
   src/entities/renderqueue.c
 
   src/misc/icon.c
-  ${CMAKE_CURRENT_BINARY_DIR}/misc/credits.c
+  ${CMAKE_CURRENT_BINARY_DIR}/src/misc/credits.c
 
   src/main.c
 )
@@ -674,13 +692,19 @@ SET_TARGET_PROPERTIES(${GAME_UNIXNAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CM
 # Installing on *nix
 IF(UNIX)
   INSTALL(CODE "MESSAGE(\"Installing ${GAME_NAME} ${GAME_VERSION}... Make sure that you have the appropriate privileges.\")")
-  INSTALL(TARGETS "${GAME_UNIXNAME}" RUNTIME DESTINATION "${GAME_BINDIR}")
-  INSTALL(FILES LICENSE README.md CHANGES.md logo.png surge.png surge.rocks DESTINATION "${GAME_DATADIR}")
-  INSTALL(DIRECTORY characters scripts sprites config images levels musics quests samples scripts themes languages fonts licenses DESTINATION "${GAME_DATADIR}" PATTERN ".git" EXCLUDE)
+  INSTALL(FILES LICENSE README.md CHANGES.md CONTRIBUTING.md logo.png surge.png surge.rocks DESTINATION "${GAME_DATADIR}")
+  INSTALL(DIRECTORY characters scripts sprites images levels musics quests samples scripts themes languages fonts inputs licenses DESTINATION "${GAME_DATADIR}" PATTERN ".git" EXCLUDE)
   INSTALL(FILES src/misc/opensurge.png DESTINATION "${DESKTOP_ICON_PATH}")
-  INSTALL(FILES src/misc/opensurge.appdata.xml DESTINATION "${DESKTOP_METAINFO_PATH}")
+  INSTALL(FILES "${CMAKE_CURRENT_BINARY_DIR}/src/misc/opensurge.appdata.xml" DESTINATION "${DESKTOP_METAINFO_PATH}")
   IF(DESKTOP_INSTALL)
-    INSTALL(FILES src/misc/opensurge.desktop DESTINATION "${DESKTOP_ENTRY_PATH}")
+    INSTALL(FILES "${CMAKE_CURRENT_BINARY_DIR}/src/misc/opensurge.desktop" DESTINATION "${DESKTOP_ENTRY_PATH}")
   ENDIF()
-  INSTALL(CODE "MESSAGE(\"Installed ${GAME_UNIXNAME} to ${GAME_BINDIR}. You may now start the game.\")")
+  INSTALL(TARGETS "${GAME_UNIXNAME}" RUNTIME DESTINATION "${GAME_BINDIR}")
+
+  # Success!
+  IF(IS_ABSOLUTE "${GAME_BINDIR}")
+    INSTALL(CODE "MESSAGE(\"Installed ${GAME_UNIXNAME} to ${GAME_BINDIR}.\")")
+  ELSE()
+    INSTALL(CODE "MESSAGE(\"Installed ${GAME_UNIXNAME} to ${CMAKE_INSTALL_PREFIX}/${GAME_BINDIR}.\")")
+  ENDIF()
 ENDIF()

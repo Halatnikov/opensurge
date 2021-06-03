@@ -1,7 +1,7 @@
 /*
  * Open Surge Engine
  * level.c - code for the game levels
- * Copyright (C) 2008-2020  Alexandre Martins <alemartf@gmail.com>
+ * Copyright (C) 2008-2021  Alexandre Martins <alemartf@gmail.com>
  * http://opensurge2d.org
  *
  * This program is free software; you can redistribute it and/or modify
@@ -208,8 +208,7 @@ static void render_players();
 static void update_music();
 static void spawn_players();
 static void render_level(brick_list_t *major_bricks, item_list_t *major_items, enemy_list_t *major_enemies); /* render bricks, items, enemies, players, etc. */
-static void render_hud(enemy_list_t *major_enemies); /* gui / hud related */
-static void render_powerups(); /* gui / hud related */
+static void render_hud(); /* gui / hud related */
 static void render_dlgbox(); /* dialog boxes */
 static void update_dlgbox(); /* dialog boxes */
 static void reconfigure_players_input_devices();
@@ -266,14 +265,14 @@ static void editor_enable();
 static void editor_disable();
 static void editor_update();
 static void editor_render();
-static int editor_is_enabled();
-static int editor_want_to_activate();
+static bool editor_is_enabled();
+static bool editor_want_to_activate();
 static void editor_update_background();
 static void editor_render_background();
 static void editor_waterline_render(int ycoord, color_t color);
 static void editor_save();
 static void editor_scroll();
-static int editor_is_eraser_enabled();
+static bool editor_is_eraser_enabled();
 
 /* object type */
 enum editor_entity_type {
@@ -289,9 +288,9 @@ enum editor_entity_type {
                 EDT_ENEMY );
 
 /* internal stuff */
-static int editor_enabled; /* is the level editor enabled? */
-static int editor_previous_video_resolution;
-static int editor_previous_video_smooth;
+static bool editor_enabled; /* is the level editor enabled? */
+static videoresolution_t editor_previous_video_resolution;
+static bool editor_previous_video_smooth;
 static editorcmd_t* editor_cmd;
 static v2d_t editor_camera, editor_cursor;
 static enum editor_entity_type editor_cursor_entity_type;
@@ -484,9 +483,9 @@ void level_load(const char *filepath)
     spawn_point = v2d_new(0,0);
     dialogregion_size = 0;
     act = 1;
-    requires[0] = GAME_MAIN_VERSION;
-    requires[1] = GAME_MAJOR_VERSION;
-    requires[2] = GAME_MINOR_VERSION;
+    requires[0] = GAME_VERSION_SUP;
+    requires[1] = GAME_VERSION_SUB;
+    requires[2] = GAME_VERSION_WIP;
     readonly = FALSE;
     waterlevel = DEFAULT_WATERLEVEL;
     watercolor = DEFAULT_WATERCOLOR();
@@ -573,8 +572,6 @@ void level_unload()
         music_stop();
         music_unref(music);
     }
-    /*music_unref("musics/invincible.ogg");
-    music_unref("musics/speed.ogg");*/
 
     /* destroy extradata */
     ssobj_extradata = fasthash_destroy(ssobj_extradata);
@@ -675,7 +672,7 @@ int level_save(const char *filepath)
     "bgtheme \"%s\"\n"
     "spawn_point %d %d\n",
     version,
-    GAME_MAIN_VERSION, GAME_MAJOR_VERSION, GAME_MINOR_VERSION,
+    GAME_VERSION_SUP, GAME_VERSION_SUB, GAME_VERSION_WIP,
     act, theme, bgtheme,
     (int)spawn_point.x, (int)spawn_point.y);
 
@@ -1500,7 +1497,7 @@ void level_render()
     render_level(major_bricks, major_items, major_enemies);
 
     /* render the built-in HUD */
-    render_hud(major_enemies);
+    render_hud();
 
     entitymanager_release_retrieved_brick_list(major_bricks);
     entitymanager_release_retrieved_item_list(major_items);
@@ -2378,13 +2375,9 @@ void spawn_players()
 
 
 /* renders the built-in hud */
-void render_hud(enemy_list_t *major_enemies)
+void render_hud()
 {
     v2d_t fixedcam = v2d_new(VIDEO_SCREEN_W/2, VIDEO_SCREEN_H/2);
-
-    /* powerups */
-    if(!level_cleared)
-        render_powerups();
 
     /* dialog box */
     render_dlgbox(fixedcam);
@@ -2543,74 +2536,6 @@ bool is_setup_object(const char* object_name)
         return true;
 
     return false;
-}
-
-
-/* misc */
-
-/* render powerups */
-void render_powerups()
-{
-    const char *sprite_name = "Item Box Icon";
-    image_t *icon[MAX_POWERUPS]; /* icons */
-    int visible[MAX_POWERUPS]; /* is icon[i] visible? */
-    int i, c = 0; /* c is the icon count */
-    float t = timer_get_ticks() * 0.001f;
-
-    for(i=0; i<MAX_POWERUPS; i++)
-        visible[i] = TRUE;
-
-    if(player) {
-        if(player->got_glasses)
-            icon[c++] = sprite_get_image( sprite_get_animation(sprite_name, 7) , 0 );
-
-        switch(player_shield_type(player))
-        {
-            case SH_SHIELD:
-                icon[c++] = sprite_get_image( sprite_get_animation(sprite_name, 8) , 0 );
-                break;
-            case SH_FIRESHIELD:
-                icon[c++] = sprite_get_image( sprite_get_animation(sprite_name, 12) , 0 );
-                break;
-            case SH_THUNDERSHIELD:
-                icon[c++] = sprite_get_image( sprite_get_animation(sprite_name, 13) , 0 );
-                break;
-            case SH_WATERSHIELD:
-                icon[c++] = sprite_get_image( sprite_get_animation(sprite_name, 14) , 0 );
-                break;
-            case SH_ACIDSHIELD:
-                icon[c++] = sprite_get_image( sprite_get_animation(sprite_name, 15) , 0 );
-                break;
-            case SH_WINDSHIELD:
-                icon[c++] = sprite_get_image( sprite_get_animation(sprite_name, 16) , 0 );
-                break;
-            case SH_NONE:
-                break;
-        }
-
-        if(player_is_invincible(player)) {
-            icon[c++] = sprite_get_image( sprite_get_animation(sprite_name, 5) , 0 );
-            if(player->invincibility_timer >= PLAYER_MAX_INVINCIBILITY * 0.75f) { /* it blinks */
-                /* we want something that blinks faster as player->invincibility_timer tends to PLAYER_MAX_INVINCIBLITY */
-                float x = (PLAYER_MAX_INVINCIBILITY - player->invincibility_timer) / (PLAYER_MAX_INVINCIBILITY * 0.25f);
-                visible[c-1] = sinf( (0.5f*PI*t) / (x+0.1f) ) >= 0.0f;
-            }
-        }
-
-        if(player_is_turbocharged(player)) {
-            icon[c++] = sprite_get_image( sprite_get_animation(sprite_name, 6) , 0 );
-            if(player->turbo_timer >= PLAYER_MAX_TURBO * 0.75f) { /* it blinks */
-                /* we want something that blinks faster as player->turbo_timer tends to PLAYER_MAX_TURBO */
-                float x = (PLAYER_MAX_TURBO - player->turbo_timer) / (PLAYER_MAX_TURBO * 0.25f);
-                visible[c-1] = sinf( (0.5f*PI*t) / (x+0.1f) ) >= 0.0f;
-            }
-        }
-    }
-
-    for(i=0; i<c; i++) {
-        if(visible[i])
-            image_draw(icon[i], VIDEO_SCREEN_W - image_width(icon[i]) * (i+1) - 5*i - 15, 10, IF_NONE);
-    }
 }
 
 
@@ -2979,7 +2904,7 @@ void editor_init()
     logfile_message("editor_init()");
 
     /* intializing... */
-    editor_enabled = FALSE;
+    editor_enabled = false;
     editor_item_list_size = -1;
     while(editor_item_list[++editor_item_list_size] >= 0);
     editor_cursor_entity_type = EDT_BRICK;
@@ -3052,7 +2977,7 @@ void editor_release()
     font_destroy(editor_help_font);
 
     /* releasing... */
-    editor_enabled = FALSE;
+    editor_enabled = false;
     logfile_message("editor_release() ok");
 }
 
@@ -3527,17 +3452,20 @@ void editor_enable()
 {
     logfile_message("Entering the level editor");
 
-    /* activating the editor */
-    editor_action_init();
-    editor_enabled = TRUE;
-    editor_camera.x = (int)camera_get_position().x;
-    editor_camera.y = (int)camera_get_position().y;
-    editor_cursor = v2d_new(VIDEO_SCREEN_W/2, VIDEO_SCREEN_H/2);
+    /* pause the SurgeScript VM */
+    scripting_pause_vm();
 
     /* changing the video resolution */
     editor_previous_video_resolution = video_get_resolution();
     editor_previous_video_smooth = video_is_smooth();
-    video_changemode(VIDEORESOLUTION_EDT, FALSE, video_is_fullscreen());
+    video_changemode(VIDEORESOLUTION_EDT, false, video_is_fullscreen());
+
+    /* activating the editor */
+    editor_action_init();
+    editor_enabled = true;
+    editor_camera.x = (int)camera_get_position().x;
+    editor_camera.y = (int)camera_get_position().y;
+    editor_cursor = v2d_new(VIDEO_SCREEN_W/2, VIDEO_SCREEN_H/2);
 
     /* display a warm, welcome message */
     editor_status_display("$EDITOR_MESSAGE_WELCOME", 0, NULL);
@@ -3554,16 +3482,19 @@ void editor_disable()
 
     /* disabling the level editor */
     editor_action_release();
-    editor_enabled = FALSE;
-
-    /* notify the SurgeScript entities */
-    notify_ssobjects("onLeaveEditor");
+    editor_enabled = false;
 
     /* restoring the video resolution */
     video_changemode(editor_previous_video_resolution, editor_previous_video_smooth, video_is_fullscreen());
 
     /* updating the level size */
     update_level_size();
+
+    /* unpause the SurgeScript VM */
+    scripting_resume_vm();
+
+    /* notify the SurgeScript entities */
+    notify_ssobjects("onLeaveEditor");
 }
 
 
@@ -3571,7 +3502,7 @@ void editor_disable()
  * editor_is_enabled()
  * Is the level editor activated?
  */
-int editor_is_enabled()
+bool editor_is_enabled()
 {
     return editor_enabled;
 }
@@ -3580,7 +3511,7 @@ int editor_is_enabled()
  * editor_want_to_activate()
  * The level editor wants to be activated!
  */
-int editor_want_to_activate()
+bool editor_want_to_activate()
 {
     return editorcmd_is_triggered(editor_cmd, "enter");
 }
@@ -3679,7 +3610,7 @@ void editor_scroll()
  * editor_is_eraser_enabled()
  * Is the eraser enabled?
  */
-int editor_is_eraser_enabled()
+bool editor_is_eraser_enabled()
 {
     const float hold_time = 0.57f; /* the eraser is activated after this amount of seconds */
     static float timer = 0.0f;
@@ -3699,7 +3630,7 @@ int editor_is_eraser_enabled()
     }
     else {
         timer = 0.0f;
-        return FALSE;
+        return false;
     }
 }
 
@@ -4538,17 +4469,10 @@ const char* editor_tooltip_ssproperties_file(surgescript_object_t* object)
 /* initialize the status bar */
 void editor_status_init()
 {
-    const int padding = 8;
-    int h = 0;
-
     editor_status_timer = 0.0f;
     editor_status_font = font_create("EditorUI");
-
     font_set_text(editor_status_font, " ");
-    h = (int)(font_get_textsize(editor_status_font).y);
-
     font_set_visible(editor_status_font, false);
-    font_set_position(editor_status_font, v2d_new(padding, video_get_window_size().y - h - padding));
 }
 
 /* release the status bar */
@@ -4572,8 +4496,11 @@ void editor_status_render()
 {
     if(font_is_visible(editor_status_font)) {
         v2d_t cam = v2d_multiply(video_get_screen_size(), 0.5f);
+        int h = (int)(font_get_textsize(editor_status_font).y);
+        const int padding = 8;
 
         image_rectfill(0, VIDEO_SCREEN_H - 32, VIDEO_SCREEN_W, VIDEO_SCREEN_H, EDITOR_UI_COLOR_TRANS(160));
+        font_set_position(editor_status_font, v2d_new(padding, VIDEO_SCREEN_H - h - padding));
         font_render(editor_status_font, cam);
     }
 }

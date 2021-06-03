@@ -1,7 +1,7 @@
 /*
  * Open Surge Engine
  * sprite.h - code for the sprites/animations
- * Copyright (C) 2008-2009  Alexandre Martins <alemartf@gmail.com>
+ * Copyright (C) 2008-2009, 2018-2019  Alexandre Martins <alemartf@gmail.com>
  * http://opensurge2d.org
  *
  * This program is free software; you can redistribute it and/or modify
@@ -21,31 +21,38 @@
 #ifndef _SPRITE_H
 #define _SPRITE_H
 
+#include <stdbool.h>
 #include <stdio.h>
 #include "v2d.h"
 #include "image.h"
+#include "darray.h"
 #include "nanoparser/nanoparser.h"
 
 typedef struct animation_t animation_t;
 typedef struct spriteinfo_t spriteinfo_t;
 
+/* animtransition */
+/* a helper struct representing a transition from one animation to another */
+struct animtransition_t;
+
 /* animation */
 /* this represents an animation */
 struct animation_t {
+    const spriteinfo_t* sprite; /* this animation belongs to this sprite */
     int id; /* id of the animation */
-    int repeat; /* repeat animation? */
+    bool repeat; /* repeat animation? */
     float fps; /* frames per second */
     int frame_count; /* how many frames does this animation have? */
-    int *data; /* frame vector */
+    int* data; /* frame vector */
     v2d_t hot_spot; /* hot spot */
-    image_t **frame_data; /* reference to spriteinfo->frame_data */
-    int repeat_from; /* n. if repeat == TRUE, jump back to the n-th frame of the animation. Defaults to zero */
+    int repeat_from; /* if repeat is true, jump back to this frame of the animation. Defaults to zero */
+    const animation_t *next; /* will be NULL, unless this is a transition */
 };
 
 /* sprite info */
 /* spriteinfo_t represents only ONE sprite (meta data), with several animations */
 struct spriteinfo_t {
-    char *source_file;
+    char* source_file;
     int rect_x, rect_y, rect_w, rect_h;
     int frame_w, frame_h;
     v2d_t hot_spot;
@@ -54,7 +61,9 @@ struct spriteinfo_t {
     image_t **frame_data; /* image_t* vector */
 
     int animation_count;
-    animation_t **animation_data; /* animation_t* vector */
+    animation_t **animation_data; /* vector of animation_t* */
+
+    DARRAY(struct animtransition_t*, transition); /* transitions */
 };
 
 
@@ -67,14 +76,17 @@ void sprite_init();
 /* releases the sprite module */
 void sprite_release();
 
-/* returns the required animation */
-animation_t *sprite_get_animation(const char *sprite_name, int anim_id);
-
-/* returns the specified frame of the given animation */
-struct image_t *sprite_get_image(const animation_t *anim, int frame_id);
+/* gets the required animation - crashes if not found */
+animation_t* sprite_get_animation(const char* sprite_name, int anim_id);
 
 /* checks if an animation exists */
 int sprite_animation_exists(const char* sprite_name, int anim_id);
+
+/* returns the specified frame of the given animation */
+struct image_t* sprite_get_image(const animation_t* anim, int frame_id);
+
+/* gets a transition animation - returns NULL if there is no such transition */
+animation_t* sprite_get_transition(const animation_t* from, const animation_t* to);
 
 
 
@@ -85,9 +97,9 @@ int sprite_animation_exists(const char* sprite_name, int anim_id);
 /* === spriteinfo_t class: public methods === */
 
 /* creates an anonymous spriteinfo_t object by parsing the passed tree */
-spriteinfo_t *spriteinfo_create(const parsetree_program_t *tree);
+spriteinfo_t* spriteinfo_create(const parsetree_program_t* tree);
 
 /* if you have called spriteinfo_create(), call this too when you're done with the sprite */
-void spriteinfo_destroy(spriteinfo_t *info);
+void spriteinfo_destroy(spriteinfo_t* info);
 
 #endif

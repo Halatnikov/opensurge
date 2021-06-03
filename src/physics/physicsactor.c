@@ -427,9 +427,12 @@ void physicsactor_render_sensors(const physicsactor_t *pa, v2d_t camera_position
     sensor_render(sensor_D(pa), pa->position, pa->movmode, camera_position);
     sensor_render(sensor_M(pa), pa->position, pa->movmode, camera_position);
     sensor_render(sensor_U(pa), pa->position, pa->movmode, camera_position);
-    render_ball(pa->angle_sensor[0], 2, sensor_get_color(sensor_A(pa)), camera_position);
-    render_ball(pa->angle_sensor[1], 2, sensor_get_color(sensor_B(pa)), camera_position);
     render_ball(pa->position, 1, color_rgb(255, 255, 255), camera_position);
+
+    if(!pa->midair) {
+        render_ball(pa->angle_sensor[0], 2, sensor_get_color(sensor_A(pa)), camera_position);
+        render_ball(pa->angle_sensor[1], 2, sensor_get_color(sensor_B(pa)), camera_position);
+    }
 }
 
 physicsactorstate_t physicsactor_get_state(const physicsactor_t *pa)
@@ -569,7 +572,7 @@ void physicsactor_breathe(physicsactor_t *pa)
 }
 
 /* getters and setters */
-#define GENERATE_ACCESSOR_AND_MUTATOR_OF(x) \
+#define GENERATE_GETTER_AND_SETTER_OF(x) \
 float physicsactor_get_##x(const physicsactor_t *pa) \
 { \
     return pa->x; \
@@ -580,35 +583,35 @@ void physicsactor_set_##x(physicsactor_t *pa, float value) \
     pa->x = value; \
 }
 
-GENERATE_ACCESSOR_AND_MUTATOR_OF(xsp)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(ysp)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(gsp)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(acc)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(dec)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(frc)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(topspeed)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(topyspeed)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(air)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(jmp)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(jmprel)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(diejmp)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(hitjmp)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(grv)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(slp)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(chrg)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(rollfrc)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(rolldec)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(rolluphillslp)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(rolldownhillslp)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(walkthreshold)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(rollthreshold)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(unrollthreshold)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(falloffthreshold)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(brakingthreshold)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(airdragthreshold)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(airdragxthreshold)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(chrgthreshold)
-GENERATE_ACCESSOR_AND_MUTATOR_OF(waittime)
+GENERATE_GETTER_AND_SETTER_OF(xsp)
+GENERATE_GETTER_AND_SETTER_OF(ysp)
+GENERATE_GETTER_AND_SETTER_OF(gsp)
+GENERATE_GETTER_AND_SETTER_OF(acc)
+GENERATE_GETTER_AND_SETTER_OF(dec)
+GENERATE_GETTER_AND_SETTER_OF(frc)
+GENERATE_GETTER_AND_SETTER_OF(topspeed)
+GENERATE_GETTER_AND_SETTER_OF(topyspeed)
+GENERATE_GETTER_AND_SETTER_OF(air)
+GENERATE_GETTER_AND_SETTER_OF(jmp)
+GENERATE_GETTER_AND_SETTER_OF(jmprel)
+GENERATE_GETTER_AND_SETTER_OF(diejmp)
+GENERATE_GETTER_AND_SETTER_OF(hitjmp)
+GENERATE_GETTER_AND_SETTER_OF(grv)
+GENERATE_GETTER_AND_SETTER_OF(slp)
+GENERATE_GETTER_AND_SETTER_OF(chrg)
+GENERATE_GETTER_AND_SETTER_OF(rollfrc)
+GENERATE_GETTER_AND_SETTER_OF(rolldec)
+GENERATE_GETTER_AND_SETTER_OF(rolluphillslp)
+GENERATE_GETTER_AND_SETTER_OF(rolldownhillslp)
+GENERATE_GETTER_AND_SETTER_OF(walkthreshold)
+GENERATE_GETTER_AND_SETTER_OF(rollthreshold)
+GENERATE_GETTER_AND_SETTER_OF(unrollthreshold)
+GENERATE_GETTER_AND_SETTER_OF(falloffthreshold)
+GENERATE_GETTER_AND_SETTER_OF(brakingthreshold)
+GENERATE_GETTER_AND_SETTER_OF(airdragthreshold)
+GENERATE_GETTER_AND_SETTER_OF(airdragxthreshold)
+GENERATE_GETTER_AND_SETTER_OF(chrgthreshold)
+GENERATE_GETTER_AND_SETTER_OF(waittime)
 
 float physicsactor_get_airdrag(const physicsactor_t *pa) { return pa->airdrag; }
 void physicsactor_set_airdrag(physicsactor_t *pa, float value)
@@ -632,7 +635,7 @@ void physicsactor_set_airdrag(physicsactor_t *pa, float value)
 
 
 /* sensors */
-#define GENERATE_SENSOR_ACCESSOR(x) \
+#define GENERATE_SENSOR_GETTER(x) \
 const sensor_t* sensor_##x(const physicsactor_t *pa) \
 { \
     if(pa->state == PAS_JUMPING || pa->state == PAS_ROLLING) \
@@ -643,12 +646,12 @@ const sensor_t* sensor_##x(const physicsactor_t *pa) \
         return pa->x##_normal; \
 }
 
-GENERATE_SENSOR_ACCESSOR(A)
-GENERATE_SENSOR_ACCESSOR(B)
-GENERATE_SENSOR_ACCESSOR(C)
-GENERATE_SENSOR_ACCESSOR(D)
-GENERATE_SENSOR_ACCESSOR(M)
-GENERATE_SENSOR_ACCESSOR(U)
+GENERATE_SENSOR_GETTER(A)
+GENERATE_SENSOR_GETTER(B)
+GENERATE_SENSOR_GETTER(C)
+GENERATE_SENSOR_GETTER(D)
+GENERATE_SENSOR_GETTER(M)
+GENERATE_SENSOR_GETTER(U)
 
 
 /* get bounding box */
@@ -1035,7 +1038,7 @@ void run_simulation(physicsactor_t *pa, const obstaclemap_t *obstaclemap, float 
 
         /* unroll */
         if(fabs(pa->gsp) < pa->unrollthreshold)
-            pa->state = PAS_WALKING;
+            pa->state = PAS_STOPPED; /*PAS_WALKING;*/ /* anim transition: rolling -> stopped */
 
         /* facing right? */
         if(!nearly_zero(pa->gsp))
@@ -1068,7 +1071,7 @@ void run_simulation(physicsactor_t *pa, const obstaclemap_t *obstaclemap, float 
             pa->gsp = (s * pa->chrg) * (0.67f + pa->charge_intensity * 0.33f);
             pa->state = PAS_ROLLING;
             pa->charge_intensity = 0.0f;
-            pa->jump_lock_timer = 0.125f;
+            pa->jump_lock_timer = 0.09375f;
         }
         else
             pa->gsp = 0.0f;
@@ -1183,8 +1186,10 @@ void run_simulation(physicsactor_t *pa, const obstaclemap_t *obstaclemap, float 
         pa->breathe_timer -= dt;
         pa->state = PAS_BREATHING;
     }
-    else if(pa->state == PAS_BREATHING && pa->midair)
+    else if(pa->state == PAS_BREATHING && pa->midair) {
+        pa->breathe_timer = 0.0f;
         pa->state = PAS_WALKING;
+    }
 
     /*
      *
@@ -1535,6 +1540,8 @@ void run_simulation(physicsactor_t *pa, const obstaclemap_t *obstaclemap, float 
     /* animation bugfix */
     if(pa->midair && (pa->state == PAS_PUSHING || pa->state == PAS_STOPPED || pa->state == PAS_DUCKING || pa->state == PAS_LOOKINGUP))
         pa->state = WALKING_OR_RUNNING(pa);
+    if(!pa->midair && pa->state == PAS_WALKING && nearly_zero(pa->gsp))
+        pa->state = PAS_STOPPED;
 }
 
 /* which one is the tallest obstacle, a or b? */

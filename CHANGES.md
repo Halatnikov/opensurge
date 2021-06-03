@@ -1,5 +1,38 @@
 # Release Notes
 
+## 0.5.2.1 - April 15th, 2021
+
+* Fix sprites/overrides/ detection bug on Windows
+* Include LMMS source files (1up, speed, drowning, gameover)
+* Player: reduce jump_lock_timer after charging
+* Small fixes & adjustments
+
+## 0.5.2 - January 25th, 2021
+
+* Improved joystick support
+* New translations: Polish, Russian
+* New musics
+* Updated the Giant Wolf Boss
+* Added new little animals - different animals will appear in different levels
+* Increased the drowning time to 12 seconds
+* Updated the turbo/invincibility time to 20 seconds
+* Improved the springs: they now behave as expected when the player is running on the walls or on the ceiling
+* Level Editor: users can now create levels in fullscreen mode
+* Level Editor: users can now display collision gizmos by pressing a key
+* Level Editor: the interface has been translated into multiple languages
+* Fix: the engine will pause the SurgeScript VM when the game is paused
+* Fix: consistent physics in slow computers
+* Fix: the player can be smashed by solid moving platforms
+* Improvements to the SurgeScript API
+* Updated the credits screen: it now extracts data from a csv file
+* Introduced CONTRIBUTING file with guidelines for contributors
+* Introduced special folder sprites/overrides/ to ease sprite hacking
+* Input maps are now read from the (new) inputs/ folder
+* The HUD is now entirely controlled via scripting
+* The 1up jingle no longer stops the level music
+* Increased the maximum supported image size to 4096x4096 pixels
+* Bugfixes and general improvements
+
 ## 0.5.1.2 - February 2nd, 2020
 
 * New translations: Serbian, Bosnian, Dutch
@@ -17,7 +50,7 @@
 
 ## 0.5.1 - December 31st, 2019
 
-* New special moves: Surge's Lighting Boom and Surge's Lighting Smash
+* New special moves: Surge's Lightning Boom and Surge's Lightning Smash
 * Improved the physics engine & the auto-angles detection method
 * New translations: German, Spanish, Korean, French
 * Updates to the SurgeScript API

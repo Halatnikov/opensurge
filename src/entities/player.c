@@ -1,7 +1,7 @@
 /*
  * Open Surge Engine
  * player.c - player module
- * Copyright (C) 2008-2012, 2018, 2019  Alexandre Martins <alemartf@gmail.com>
+ * Copyright (C) 2008-2012, 2018-2021  Alexandre Martins <alemartf@gmail.com>
  * http://opensurge2d.org
  *
  * This program is free software; you can redistribute it and/or modify
@@ -69,14 +69,14 @@
     ((x) / 57.2957795131f)
 
 /* public constants */
-const int PLAYER_INITIAL_LIVES = 5;           /* initial lives */
-const float PLAYER_MAX_TURBO = 23.0f;         /* turbo timer */
-const float PLAYER_MAX_INVINCIBILITY = 23.0f; /* invincibility timer */
+const int PLAYER_INITIAL_LIVES = 5;    /* initial lives */
 
 /* private constants */
-static const int PLAYER_MAX_STARS = 16;              /* how many invincibility stars */
-static const float PLAYER_MAX_BLINK = 2.0f;          /* how many seconds does the player blink if he/she gets hurt? */
-static const float PLAYER_UNDERWATER_BREATH = 30.0f; /* how many seconds can the player stay underwater before drowning? */
+static const int PLAYER_MAX_STARS = 16;               /* how many invincibility stars */
+static const float PLAYER_MAX_BLINK = 2.0f;           /* how long does the player blink if he/she gets hurt, in seconds */
+static const float PLAYER_UNDERWATER_BREATH = 30.0f;  /* how long can the player stay underwater before drowning, in seconds */
+static const float PLAYER_TURBO_TIME = 20.0f;         /* super speed time, in seconds */
+static const float PLAYER_INVINCIBILITY_TIME = 20.0f; /* invincibility time, in seconds */
 
 /* private data */
 static int collectibles;         /* shared collectibles */
@@ -281,8 +281,12 @@ void player_update(player_t *player, player_t **team, int team_size, brick_list_
         player_set_turbo(player, FALSE);
 
         /* disable some shields */
-        if(player->shield_type == SH_FIRESHIELD || player->shield_type == SH_THUNDERSHIELD)
-            player_hit(player, 0.0f);
+        if(player->shield_type == SH_FIRESHIELD || player->shield_type == SH_THUNDERSHIELD) {
+            if(!player_is_invincible(player))
+                player_hit(player, 0.0f);
+            else
+                player->shield_type = SH_NONE;
+        }
 
         /* timer countdown */
         if(player->shield_type != SH_WATERSHIELD && !player_is_winning(player) && (
@@ -305,7 +309,7 @@ void player_update(player_t *player, player_t **team, int team_size, brick_list_
 
         /* update timer & finish */
         player->invincibility_timer += dt;
-        if(player->invincibility_timer >= PLAYER_MAX_INVINCIBILITY)
+        if(player->invincibility_timer >= PLAYER_INVINCIBILITY_TIME)
             player_set_invincible(player, FALSE);
     }
 
@@ -313,7 +317,7 @@ void player_update(player_t *player, player_t **team, int team_size, brick_list_
     if(player->turbo) {
         /* update timer & finish */
         player->turbo_timer += dt;
-        if(player->turbo_timer >= PLAYER_MAX_TURBO)
+        if(player->turbo_timer >= PLAYER_TURBO_TIME)
             player_set_turbo(player, FALSE);
     }
 
@@ -464,23 +468,36 @@ int player_bounce_ex(player_t *player, const actor_t *hazard, int is_heavy_objec
 /*
  * player_detach_from_ground()
  * Ensures the player is not touching the ground
- * (or ceiling if rotated) on the next frame
+ * (or ceiling/wall if rotated) on the next frame
  */
 void player_detach_from_ground(player_t *player)
 {
     /* this is meant to counter the "sticky physics" */
     if(!player_is_midair(player)) {
-        if(physicsactor_get_movmode(player->pa) == MM_FLOOR) {
+        movmode_t movmode = physicsactor_get_movmode(player->pa);
+        if(movmode == MM_FLOOR) {
             if(!player_is_rolling(player))
                 player->actor->position.y -= 2;
             else
                 player->actor->position.y -= 5;
         }
-        else if(physicsactor_get_movmode(player->pa) == MM_CEILING) {
+        else if(movmode == MM_CEILING) {
             if(!player_is_rolling(player))
                 player->actor->position.y += 2;
             else
                 player->actor->position.y += 5;
+        }
+        else if(movmode == MM_LEFTWALL) {
+            if(!player_is_rolling(player))
+                player->actor->position.x += 2;
+            else
+                player->actor->position.x += 5;
+        }
+        else if(movmode == MM_RIGHTWALL) {
+            if(!player_is_rolling(player))
+                player->actor->position.x -= 2;
+            else
+                player->actor->position.x -= 5;
         }
     }
 }

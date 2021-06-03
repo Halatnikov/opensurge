@@ -1,7 +1,7 @@
 /*
  * Open Surge Engine
  * video.c - video manager
- * Copyright (C) 2008-2019  Alexandre Martins <alemartf@gmail.com>
+ * Copyright (C) 2008-2021  Alexandre Martins <alemartf@gmail.com>
  * http://opensurge2d.org
  *
  * This program is free software; you can redistribute it and/or modify
@@ -80,6 +80,7 @@ static void setup_color_depth(int bpp);
 
 /* private stuff */
 #define DEFAULT_SCREEN_SIZE     (v2d_t){ 426, 240 }    /* this is set on stone! Picked a 16:9 resolution */
+static const char WINDOW_TITLE[] = GAME_TITLE " " GAME_VERSION_STRING;
 
 /* video manager */
 static v2d_t screen_size = DEFAULT_SCREEN_SIZE; /* represents the size of the screen. This may change (eg, is the user on the level editor?) */
@@ -161,7 +162,7 @@ void video_init(videoresolution_t resolution, bool smooth, bool fullscreen, int 
     /* window properties */
     LOCK_FUNCTION(game_quit);
     set_close_button_callback(game_quit);
-    set_window_title(GAME_TITLE " " GAME_VERSION_STRING);
+    set_window_title(WINDOW_TITLE);
 
     /* window callbacks */
     window_active = true;
@@ -187,59 +188,65 @@ void video_init(videoresolution_t resolution, bool smooth, bool fullscreen, int 
 void video_changemode(videoresolution_t resolution, bool smooth, bool fullscreen)
 {
 #if defined(A5BUILD)
-    v2d_t window_size = video_get_window_size();
-    bool old_fullscreen = video_fullscreen;
     extern ALLEGRO_EVENT_QUEUE* a5_event_queue;
+    bool prev_fullscreen = video_fullscreen;
     
-    /* a necessary evil :( */
-    if(display != NULL && video_resolution != resolution && fullscreen)
-        fullscreen = false;
-
-    /* Log the event */
-    logfile_message(
-        "Changing the video mode to 0x%x (%s, %s)",
-        (int)resolution,
-        fullscreen ? "fullscreen" : "windowed",
-        smooth ? "smooth" : "plain"
-    );
-
     /* Change the video mode */
     video_resolution = resolution;
     video_fullscreen = fullscreen;
     video_smooth = false; /* not supported yet */
-    if(video_resolution != VIDEORESOLUTION_EDT)
-        window_size = video_get_window_size();
+
+    /* Log the event */
+    logfile_message(
+        "Changing the video mode to 0x%x (%s, %s)",
+        (int)video_resolution,
+        video_fullscreen ? "fullscreen" : "windowed",
+        video_smooth ? "smooth" : "plain"
+    );
 
     /* Create a display */
     if(display == NULL) {
+        v2d_t window_size = video_get_window_size();
+
+        /* setup display flags */
         al_set_new_display_flags(ALLEGRO_OPENGL);
         al_set_new_display_flags(ALLEGRO_PROGRAMMABLE_PIPELINE);
         al_set_new_display_flags(video_fullscreen ? ALLEGRO_FULLSCREEN_WINDOW : ALLEGRO_WINDOWED);
         al_set_new_display_option(ALLEGRO_COLOR_SIZE, suggested_bpp, ALLEGRO_SUGGEST);
+
+        /* setup orientation */
         if(window_size.x >= window_size.y)
             al_set_new_display_option(ALLEGRO_SUPPORTED_ORIENTATIONS, ALLEGRO_DISPLAY_ORIENTATION_LANDSCAPE, ALLEGRO_SUGGEST);
         else
             al_set_new_display_option(ALLEGRO_SUPPORTED_ORIENTATIONS, ALLEGRO_DISPLAY_ORIENTATION_PORTRAIT, ALLEGRO_SUGGEST);
+
+        /* create display */
         if(NULL == (display = al_create_display(window_size.x, window_size.y)))
             fatal_error("Failed to create a %dx%d display", (int)window_size.x, (int)window_size.y);
         al_register_event_source(a5_event_queue, al_get_display_event_source(display));
-        al_set_window_title(display, GAME_TITLE " " GAME_VERSION_STRING);
+        al_set_window_title(display, WINDOW_TITLE);
         al_hide_mouse_cursor(display);
     }
-    else {
-        if(!al_set_display_flag(display, ALLEGRO_FULLSCREEN_WINDOW, video_fullscreen)) {
-            logfile_message("Failed to toggle to %s mode", video_fullscreen ? "fullscreen" : "windowed");
-            video_fullscreen = old_fullscreen;
-        }
+
+    /* Compute the dimensions of the screen (gameplay area) */
+    screen_size = DEFAULT_SCREEN_SIZE;
+    if(resolution == VIDEORESOLUTION_EDT) {
+        /* in the level editor, we set screen_size to the dimensions of the display */
+        screen_size = v2d_new(al_get_display_width(display), al_get_display_height(display));
+    }
+
+    /* toggle fullscreen */
+    if(!al_set_display_flag(display, ALLEGRO_FULLSCREEN_WINDOW, video_fullscreen)) {
+        logfile_message("Failed to toggle to %s mode", video_fullscreen ? "fullscreen" : "windowed");
+        video_fullscreen = prev_fullscreen;
+    }
+
+    /* resize the display */
+    if(!video_fullscreen) {
+        v2d_t window_size = video_get_window_size();
         if(!al_resize_display(display, window_size.x, window_size.y))
             logfile_message("Failed to resize the display to %dx%d", (int)window_size.x, (int)window_size.y);
     }
-
-    /* Compute the dimensions of the screen */
-    if(resolution == VIDEORESOLUTION_EDT)
-        screen_size = v2d_new(al_get_display_width(display), al_get_display_height(display)); /* different than window_size if using ALLEGRO_FULLSCREEN_WINDOWED */
-    else
-        screen_size = DEFAULT_SCREEN_SIZE;
 
     /* Create the backbuffer */
     if(backbuffer != NULL)

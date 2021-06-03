@@ -65,6 +65,41 @@ object "Powerup Speed" is "entity", "basic", "powerup"
     {
         player.turbo = true;
         music.play();
+        Level.spawn("Powerup Speed - Music Watcher").setPlayer(player).setMusic(music);
+    }
+}
+
+// Stop the "speed" music if the turbo powerup is lost
+object "Powerup Speed - Music Watcher"
+{
+    player = null;
+    music = null;
+
+    state "main"
+    {
+        if(player !== null && music !== null) {
+            if(music.playing) {
+                if(player.turbo)
+                    return; // keep playing the music
+                else if(player.underwater)
+                    music.stop();
+            }
+        }
+
+        // discard this music watcher
+        destroy();
+    }
+
+    fun setPlayer(p)
+    {
+        player = p;
+        return this;
+    }
+
+    fun setMusic(m)
+    {
+        music = m;
+        return this;
     }
 }
 
@@ -72,7 +107,7 @@ object "Powerup Speed" is "entity", "basic", "powerup"
 object "Powerup 1up" is "entity", "basic", "powerup"
 {
     itemBox = spawn("Item Box").setAnimation(1);
-    jingle = Sound("samples/1up.ogg");
+    extraLife = spawn("Give Extra Life"); // function object stored in the functions/ folder
 
     state "main"
     {
@@ -84,8 +119,8 @@ object "Powerup 1up" is "entity", "basic", "powerup"
 
     fun onItemBoxCrushed(player)
     {
-        player.lives++;
-        jingle.play();
+        // this will play the 1up jingle for us
+        extraLife.call();
     }
 
     // given a player name, get the corresponding
